@@ -4,6 +4,10 @@
 #include <zephyr/input/input.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
+#if CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0
+#include <zephyr/sys/util.h> // for CLAMP
+#endif
+
 #include <zephyr/logging/log.h>
 
 #include "input_pinnacle.h"
@@ -238,19 +242,70 @@ static void pinnacle_report_data(const struct device *dev) {
         data->in_int = true;
     }
 
+#if CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0
+    bool has_key_report = false;
+#endif
+
     if (!config->no_taps && (btn || data->btn_cache)) {
         for (int i = 0; i < 3; i++) {
             uint8_t btn_val = btn & BIT(i);
             if (btn_val != (data->btn_cache & BIT(i))) {
                 input_report_key(dev, INPUT_BTN_0 + i, btn_val ? 1 : 0, false, K_FOREVER);
+                #if CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0
+                    has_key_report = true;
+                #endif
             }
         }
     }
 
     data->btn_cache = btn;
 
+#if CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0
+
+    static int64_t adx = 0;
+    static int64_t ady = 0;
+    static int64_t last_smp_time = 0;
+    static int64_t last_rpt_time = 0;
+    int64_t now = k_uptime_get();
+    if (now - last_smp_time >= CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN) {
+        adx = ady = 0;
+    }
+    last_smp_time = now;
+    adx += dx;
+    ady += dy;
+    if (now - last_rpt_time < CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN) {
+        if (!has_key_report) {
+            return;
+        }
+    }
+
+    // clamp report value
+    int16_t rx = (int16_t)CLAMP(adx, INT16_MIN, INT16_MAX);
+    int16_t ry = (int16_t)CLAMP(ady, INT16_MIN, INT16_MAX);
+    bool have_x = rx != 0;
+    bool have_y = ry != 0;
+
+    if (have_x || have_y) {
+        last_rpt_time = now;
+        adx = ady = 0;
+        if (have_x) {
+            input_report_rel(dev, INPUT_REL_X, rx, !have_y, K_NO_WAIT);
+        }
+        if (have_y) {
+            input_report_rel(dev, INPUT_REL_Y, ry, true, K_NO_WAIT);
+        }
+    }
+    else if (has_key_report) {
+        // force sync key report
+        input_report_rel(dev, INPUT_REL_X, 0, true, K_NO_WAIT);
+    }
+
+#else /* CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0 */
+
     input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
     input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
+
+#endif /* CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0 */
 
     return;
 }
