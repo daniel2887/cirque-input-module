@@ -215,7 +215,7 @@ static int pinnacle_era_write(const struct device *dev, const uint16_t addr, uin
 
 static void pinnacle_report_data(const struct device *dev) {
     const struct pinnacle_config *config = dev->config;
-    uint8_t packet[3];
+    uint8_t packet[4];
     int ret;
     ret = pinnacle_seq_read(dev, PINNACLE_STATUS1, packet, 1);
     if (ret < 0) {
@@ -225,7 +225,7 @@ static void pinnacle_report_data(const struct device *dev) {
     if (!(packet[0] & PINNACLE_STATUS1_SW_DR)) {
         return;
     }
-    ret = pinnacle_seq_read(dev, PINNACLE_2_2_PACKET0, packet, 3);
+    ret = pinnacle_seq_read(dev, PINNACLE_2_2_PACKET0, packet, 4);
     if (ret < 0) {
         LOG_ERR("read packet: %d", ret);
         return;
@@ -235,7 +235,8 @@ static void pinnacle_report_data(const struct device *dev) {
                   (PINNACLE_PACKET0_BTN_PRIM | PINNACLE_PACKET0_BTN_SEC | PINNACLE_PACKET0_BTN_AUX);
     int16_t dx = (int16_t)(int8_t)packet[1];
     int16_t dy = (int16_t)(int8_t)packet[2];
-    LOG_DBG("button: %d, dx: %d dy: %d", btn, dx, dy);
+    int8_t dv = (int8_t)packet[3];
+    LOG_DBG("button: %d, dx: %d dy: %d dv: %d", btn, dx, dy, dv);
     if (data->in_int) {
         LOG_DBG("Clearing status bit");
         ret = pinnacle_clear_status(dev);
@@ -264,6 +265,7 @@ static void pinnacle_report_data(const struct device *dev) {
 
     static int64_t adx = 0;
     static int64_t ady = 0;
+    static int64_t adv = 0;
     static int64_t last_smp_time = 0;
     static int64_t last_rpt_time = 0;
     int64_t now = k_uptime_get();
@@ -273,8 +275,10 @@ static void pinnacle_report_data(const struct device *dev) {
     last_smp_time = now;
     adx += dx;
     ady += dy;
+    adv += dv;
     if (now - last_rpt_time < CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN) {
-        if (!has_key_report) {
+        // force report on tapped and scrolled
+        if (!has_key_report && !adv) {
             return;
         }
     }
@@ -282,17 +286,22 @@ static void pinnacle_report_data(const struct device *dev) {
     // clamp report value
     int16_t rx = (int16_t)CLAMP(adx, INT16_MIN, INT16_MAX);
     int16_t ry = (int16_t)CLAMP(ady, INT16_MIN, INT16_MAX);
+    int16_t rv = (int16_t)CLAMP(adv, INT16_MIN, INT16_MAX);
     bool have_x = rx != 0;
     bool have_y = ry != 0;
+    bool have_v = rv != 0;
 
-    if (have_x || have_y) {
+    if (have_x || have_y || have_v) {
         last_rpt_time = now;
-        adx = ady = 0;
+        adx = ady = adv = 0;
         if (have_x) {
-            input_report_rel(dev, INPUT_REL_X, rx, !have_y, K_NO_WAIT);
+            input_report_rel(dev, INPUT_REL_X, rx, !have_y && !have_v, K_NO_WAIT);
         }
         if (have_y) {
-            input_report_rel(dev, INPUT_REL_Y, ry, true, K_NO_WAIT);
+            input_report_rel(dev, INPUT_REL_Y, ry, !have_v, K_NO_WAIT);
+        }
+        if (have_v) {
+            input_report_rel(dev, INPUT_REL_WHEEL, rv, true, K_NO_WAIT);
         }
     }
     else if (has_key_report) {
@@ -302,8 +311,14 @@ static void pinnacle_report_data(const struct device *dev) {
 
 #else /* CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0 */
 
-    input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
-    input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
+    // either delta xy, or scroll wheel should be read
+    if (dv) {
+        input_report_rel(dev, INPUT_REL_WHEEL, dv, true, K_FOREVER);
+    }
+    else {
+        input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
+        input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
+    }
 
 #endif /* CONFIG_INPUT_PINNACLE_REPORT_INTERVAL_MIN > 0 */
 
