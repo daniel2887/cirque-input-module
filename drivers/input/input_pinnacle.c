@@ -391,6 +391,15 @@ static int pinnacle_init(const struct device *dev) {
         return ret;
     }
 
+    uint8_t feed_cfg3 = 0x00;
+    if (config->no_smoothing) {
+        feed_cfg3 |= PINNACLE_FEED_CFG3_DIS_SMO;
+    }
+    ret = pinnacle_write(dev, PINNACLE_FEED_CFG3, feed_cfg3);
+    if (ret < 0) {
+        LOG_ERR("can't write %d", ret);
+        return ret;
+    }
     uint8_t feed_cfg2 = PINNACLE_FEED_CFG2_EN_IM;
     if (config->no_taps) {
         feed_cfg2 |= PINNACLE_FEED_CFG2_DIS_TAP;
@@ -445,6 +454,7 @@ static int pinnacle_init(const struct device *dev) {
         .rotate_90 = DT_INST_PROP(0, rotate_90),                                                   \
         .sleep_en = DT_INST_PROP(0, sleep),                                                        \
         .no_taps = DT_INST_PROP(0, no_taps),                                                       \
+        .no_smoothing = DT_INST_PROP(0, no_smoothing),                                             \
         .sensitivity = DT_INST_ENUM_IDX_OR(0, sensitivity, PINNACLE_SENSITIVITY_1X),               \
         .dr = GPIO_DT_SPEC_GET_OR(DT_DRV_INST(0), dr_gpios, {}),                                   \
     };                                                                                             \

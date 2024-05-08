@@ -36,6 +36,8 @@
 #define PINNACLE_FEED_CFG2_DIS_SCRL BIT(3)  // Disable scroll
 #define PINNACLE_FEED_CFG2_DIS_GE BIT(4)    // Disable GlideExtend
 #define PINNACLE_FEED_CFG2_ROTATE_90 BIT(7) // Swap X & Y
+#define PINNACLE_FEED_CFG3 0x06             // Contains feed operation and configuration bits.
+#define PINNACLE_FEED_CFG3_DIS_SMO BIT(1)   // Disable smoothing
 #define PINNACLE_CAL_CFG 0x07               // Contains calibration configuration bits.
 #define PINNACLE_PS2_AUX 0x08               // Contains Data register for PS/2 Aux Control.
 #define PINNACLE_SAMPLE 0x09                // Sample Rate Number of samples generated per second.
@@ -89,7 +91,7 @@ struct pinnacle_config {
 #elif DT_INST_ON_BUS(0, spi)
     const struct spi_dt_spec bus;
 #endif
-    bool rotate_90, sleep_en, no_taps;
+    bool rotate_90, sleep_en, no_taps, no_smoothing;
     enum pinnacle_sensitivity sensitivity;
     const struct gpio_dt_spec dr;
 };
