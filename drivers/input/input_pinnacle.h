@@ -37,7 +37,14 @@
 #define PINNACLE_FEED_CFG2_DIS_GE BIT(4)    // Disable GlideExtend
 #define PINNACLE_FEED_CFG2_ROTATE_90 BIT(7) // Swap X & Y
 #define PINNACLE_FEED_CFG3 0x06             // Contains feed operation and configuration bits.
+#define PINNACLE_FEED_CFG3_BTNS_456_TO_123_IN_REL BIT(0)
 #define PINNACLE_FEED_CFG3_DIS_SMO BIT(1)   // Disable smoothing
+#define PINNACLE_FEED_CFG3_DIS_PALM_NERD_MEAS BIT(3)
+#define PINNACLE_FEED_CFG3_DIS_NOISE_AVOIDANCE BIT(4)
+#define PINNACLE_FEED_CFG3_DIS_WRAP_LOCKOUT BIT(5)
+#define PINNACLE_FEED_CFG3_DIS_DYNAMIC_EMI_ADJ BIT(6)
+#define PINNACLE_FEED_CFG3_DIS_HW_EMI_DETECT BIT(7)
+#define PINNACLE_FEED_CFG3_DIS_SW_EMI_DETECT BIT(8)
 #define PINNACLE_CAL_CFG 0x07               // Contains calibration configuration bits.
 #define PINNACLE_PS2_AUX 0x08               // Contains Data register for PS/2 Aux Control.
 #define PINNACLE_SAMPLE 0x09                // Sample Rate Number of samples generated per second.
