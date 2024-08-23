@@ -10,6 +10,8 @@ properties:
     type: boolean
   no-smoothing:
     type: boolean
+  no-scrolling:
+    type: boolean
   sensitivity:
     type: string
     enum:

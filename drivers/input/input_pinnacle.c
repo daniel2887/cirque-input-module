@@ -407,6 +407,9 @@ static int pinnacle_init(const struct device *dev) {
     if (config->rotate_90) {
         feed_cfg2 |= PINNACLE_FEED_CFG2_ROTATE_90;
     }
+    if (config->no_scrolling) {
+        feed_cfg2 |= PINNACLE_FEED_CFG2_DIS_SCRL;
+    }
     ret = pinnacle_write(dev, PINNACLE_FEED_CFG2, feed_cfg2);
     if (ret < 0) {
         LOG_ERR("can't write %d", ret);
@@ -455,6 +458,7 @@ static int pinnacle_init(const struct device *dev) {
         .sleep_en = DT_INST_PROP(0, sleep),                                                        \
         .no_taps = DT_INST_PROP(0, no_taps),                                                       \
         .no_smoothing = DT_INST_PROP(0, no_smoothing),                                             \
+        .no_scrolling = DT_INST_PROP(0, no_scrolling),                                             \
         .sensitivity = DT_INST_ENUM_IDX_OR(0, sensitivity, PINNACLE_SENSITIVITY_1X),               \
         .dr = GPIO_DT_SPEC_GET_OR(DT_DRV_INST(0), dr_gpios, {}),                                   \
     };                                                                                             \
